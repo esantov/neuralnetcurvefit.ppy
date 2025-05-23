@@ -82,51 +82,19 @@ if uploaded_file:
         model_option = st.radio("Choose model to fit", model_options)
 
     def linear(x, a, b):
-    return a * x + b
-
-def exponential(x, a, b):
+        return a * x + b
+    
+    def exponential(x, a, b):
         return a * np.exp(b * x)
-
+    
     def gompertz(x, a, b, c):
         return a * np.exp(-b * np.exp(-c * x))
-
+    
     def four_pl(x, A, B, C, D):
         return D + (A - D) / (1 + (x / C) ** B)
-
+    
     def five_pl(x, A, B, C, D, F):
         return D + (A - D) / ((1 + (x / C) ** B) ** F)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def sigmoid_b(x, a, b, c):
         return a / (1.0 + np.exp(-(x - b) / c))
