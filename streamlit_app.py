@@ -139,6 +139,7 @@ if uploaded_file:
 
     fit_label = None
     x_full = np.linspace(x_scaled.min(), x_scaled.max(), 1000).reshape(-1, 1)
+    x_full_inv = scaler_x.inverse_transform(x_full)
 
     if model_option == "Neural Network":
         if treat_as_replicates:
