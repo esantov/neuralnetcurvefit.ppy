@@ -36,15 +36,6 @@ if uploaded_file:
 
     scaler_x = MinMaxScaler()
     scaler_y = MinMaxScaler()
-    
-    # Validate data
-if np.any(pd.isnull(x_data)) or np.any(pd.isnull(y_data)):
-    st.error("❌ Missing values detected in X or Y data. Please clean your dataset.")
-    st.stop()
-if not np.issubdtype(x_data.dtype, np.number) or not np.issubdtype(y_data.dtype, np.number):
-    st.error("❌ Non-numeric data detected in selected X or Y columns.")
-    st.stop()
-    
     x_scaled = scaler_x.fit_transform(x_data)
     y_scaled = scaler_y.fit_transform(y_data)
 
@@ -75,24 +66,40 @@ if not np.issubdtype(x_data.dtype, np.number) or not np.issubdtype(y_data.dtype,
                 if model == "Exponential":
                     try:
                         popt, _ = curve_fit(exponential, x.ravel(), y.ravel(), maxfev=10000)
-                    except RuntimeError:
-                        st.warning(f"⚠️ {model_option} model failed to converge. Try a different model.")
-                        popt = [0] * 4
                         y_pred = exponential(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                        elif model == "gompertz":
-                            popt, _ = curve_fit(gompertz, x.ravel(), y.ravel(), maxfev=10000)
-                            y_pred = gompertz(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                        elif model == "4PL":
-                            popt, _ = curve_fit(four_pl, x.ravel(), y.ravel(), maxfev=10000)
-                            y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                        elif model == "Sigmoid B":
-                            popt, _ = curve_fit(sigmoid_b, x.ravel(), y.ravel(), maxfev=10000)
-                            y_pred = sigmoid_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                        elif model == "Logistic B":
-                            popt, _ = curve_fit(logistic_b, x.ravel(), y.ravel(), maxfev=10000)
-                            y_pred = logistic_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                        else:
-                            continue
+                    except RuntimeError:
+                        st.warning("⚠️ Exponential model failed to converge.")
+                        continue(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                elif model == "Gompertz":
+                    try:
+                        popt, _ = curve_fit(gompertz, x.ravel(), y.ravel(), maxfev=10000)
+                        y_pred = gompertz(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                    except RuntimeError:
+                        st.warning("⚠️ Gompertz model failed to converge.")
+                        continue(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                elif model == "4PL":
+                    try:
+                        popt, _ = curve_fit(four_pl, x.ravel(), y.ravel(), maxfev=10000)
+                        y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                    except RuntimeError:
+                        st.warning("⚠️ 4PL model failed to converge.")
+                        continue(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                elif model == "Sigmoid B":
+                    try:
+                        popt, _ = curve_fit(sigmoid_b, x.ravel(), y.ravel(), maxfev=10000)
+                        y_pred = sigmoid_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                    except RuntimeError:
+                        st.warning("⚠️ Sigmoid B model failed to converge.")
+                        continue(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                elif model == "Logistic B":
+                    try:
+                        popt, _ = curve_fit(logistic_b, x.ravel(), y.ravel(), maxfev=10000)
+                        y_pred = logistic_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                    except RuntimeError:
+                        st.warning("⚠️ Logistic B model failed to converge.")
+                        continue(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                else:
+                    continue
                 y_test_inv = scaler_y.inverse_transform(y_test)
                 y_pred_inv = scaler_y.inverse_transform(np.array(y_pred).reshape(-1, 1))
                 r2 = r2_score(y_test_inv, y_pred_inv)
