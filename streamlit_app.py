@@ -172,17 +172,34 @@ if st.button("Add Current Data to Report"):
     st.success("Added to report queue")
 
 # Export full report to Excel
-if st.button("📥 Export Final Report (XLSX)"):
-    final_buf = io.BytesIO()
-    with pd.ExcelWriter(final_buf, engine='xlsxwriter') as writer:
-        for idx, entry in enumerate(st.session_state['report_data']):
-            sheet_name = f"Sample {idx+1} - {entry['label'][:20]}"
-            entry['original'].to_excel(writer, sheet_name + " Raw", index=False)
-            entry['summary'].to_excel(writer, sheet_name + " Summary", index=False)
-    final_buf.seek(0)
+if st.button("📥 Export Report as Excel"):
+    output = io.BytesIO()
+    used_names = set()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        for idx, entry in enumerate(st.session_state['report_entries']):
+            base_name = f"Sample {idx+1} - {entry['label'][:20]}"
+            raw_sheet_name = f"{base_name} Raw"[:31]
+            summary_sheet_name = f"{base_name} Summary"[:31]
+
+            # Ensure uniqueness
+            counter = 1
+            while raw_sheet_name in used_names or summary_sheet_name in used_names:
+                base_name = f"Sample {idx+1}-{counter} - {entry['label'][:20]}"
+                raw_sheet_name = f"{base_name} Raw"[:31]
+                summary_sheet_name = f"{base_name} Summary"[:31]
+                counter += 1
+
+            used_names.add(raw_sheet_name)
+            used_names.add(summary_sheet_name)
+
+            # Write data to the workbook
+            entry['original'].to_excel(writer, sheet_name=raw_sheet_name, index=False)
+            entry['summary'].to_excel(writer, sheet_name=summary_sheet_name, index=False)
+
+    output.seek(0)
     st.download_button(
-        label="Download Full Report",
-        data=final_buf,
-        file_name="fitting_report.xlsx",
+        label="📥 Download Excel Report",
+        data=output,
+        file_name="model_fitting_report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
