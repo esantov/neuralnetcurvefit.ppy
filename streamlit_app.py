@@ -83,16 +83,16 @@ if uploaded_file:
 
     def linear(x, a, b):
         return a * x + b
-    
+
     def exponential(x, a, b):
         return a * np.exp(b * x)
-    
+
     def gompertz(x, a, b, c):
         return a * np.exp(-b * np.exp(-c * x))
-    
+
     def four_pl(x, A, B, C, D):
         return D + (A - D) / (1 + (x / C) ** B)
-    
+
     def five_pl(x, A, B, C, D, F):
         return D + (A - D) / ((1 + (x / C) ** B) ** F)
 
@@ -220,7 +220,7 @@ if uploaded_file:
         try:
             y_vals = [float(val.strip()) for val in y_values.split(',') if val.strip() != '']
             for val in y_vals:
-                def root_func(x): return model_func(x, *popt) - val
+                def root_func(x): return y_full_pred_func(x) - val
                 from scipy.optimize import root_scalar
                 try:
                     result = root_scalar(root_func, bracket=[float(x_full_inv.min()), float(x_full_inv.max())])
