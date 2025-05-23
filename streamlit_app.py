@@ -92,7 +92,12 @@ if uploaded_file:
             y_full_pred = four_pl(scaler_x.inverse_transform(x_full).ravel(), *popt)
             fit_label = "4PL Fit"
     # Predict
-    y_pred = nn.predict(X_test)
+    if model_option == "Neural Network":
+        y_pred = nn.predict(X_test)
+        y_full_pred = nn.predict(x_full)
+    else:
+        y_pred = y_pred
+        y_full_pred = y_full_pred
     y_pred_inv = scaler_y.inverse_transform(y_pred.reshape(-1, 1))
     y_test_inv = scaler_y.inverse_transform(y_test)
 
@@ -111,21 +116,61 @@ if uploaded_file:
     else:
         st.success("✅ Excellent fit!")
 
-    # Plot
-    fig, ax = plt.subplots()
-    # x_full already defined above
-    y_full_pred = nn.predict(x_full)
-    x_full_inv = scaler_x.inverse_transform(x_full)
-    y_full_inv = scaler_y.inverse_transform(y_full_pred.reshape(-1, 1))
+    # Plot per sample
+    for sample in selected_samples:
+        fig, ax = plt.subplots()
+        group = df[df[sample_col] == sample]
+        x_sample = group[x_col].values.reshape(-1, 1)
+        y_sample = group[y_col].values.reshape(-1, 1)
 
-    ax.plot(df[x_col], df[y_col], 'o', label='Original')
-    ax.plot(x_full_inv, y_full_inv, '-', label=fit_label)
-    ax.set_xlabel(x_col)
-    ax.set_ylabel(y_col)
-    ax.legend()
-    st.pyplot(fig)
+        x_scaled = scaler_x.fit_transform(x_sample)
+        y_scaled = scaler_y.fit_transform(y_sample)
+
+        x_full = np.linspace(x_scaled.min(), x_scaled.max(), 1000).reshape(-1, 1)
+
+        if model_option == "Neural Network":
+            nn = MLPRegressor(hidden_layer_sizes=(hidden_layers, hidden_layers), activation='tanh',
+                             solver='adam', learning_rate='adaptive', early_stopping=True,
+                             max_iter=10000, random_state=42)
+            nn.fit(x_scaled, y_scaled.ravel())
+            y_pred = nn.predict(x_full)
+        else:
+            x_inv = scaler_x.inverse_transform(x_scaled)
+            y_inv = scaler_y.inverse_transform(y_scaled)
+            if model_option == "Exponential":
+                popt, _ = curve_fit(exponential, x_inv.ravel(), y_inv.ravel(), maxfev=10000)
+                y_pred = exponential(scaler_x.inverse_transform(x_full).ravel(), *popt)
+            elif model_option == "Gompertz":
+                popt, _ = curve_fit(gompertz, x_inv.ravel(), y_inv.ravel(), maxfev=10000)
+                y_pred = gompertz(scaler_x.inverse_transform(x_full).ravel(), *popt)
+            elif model_option == "4PL":
+                popt, _ = curve_fit(four_pl, x_inv.ravel(), y_inv.ravel(), maxfev=10000)
+                y_pred = four_pl(scaler_x.inverse_transform(x_full).ravel(), *popt)
+
+        x_plot = scaler_x.inverse_transform(x_full).ravel()
+        if model_option == "Neural Network":
+            y_plot = scaler_y.inverse_transform(y_pred.reshape(-1, 1)).ravel()
+        else:
+            y_plot = y_pred
+
+        ax.plot(group[x_col], group[y_col], 'o', label=f'{sample} Original')
+        ax.plot(x_plot, y_plot, '-', label=f'{sample} Fit')
+        ax.set_title(f"{sample} - {model_option} Fit")
+        ax.set_xlabel(x_col)
+        ax.set_ylabel(y_col)
+        ax.legend()
+        st.pyplot(fig)
 
     # Optional: Save model output
+    if model_option != "Neural Network" and 'ci' in locals():
+        fit_df = pd.DataFrame({
+            x_col: x_full_inv.flatten(),
+            f"Fitted_{y_col}": y_full_inv.flatten(),
+            "Lower_CI": (y_full_inv.flatten() - ci),
+            "Upper_CI": (y_full_inv.flatten() + ci)
+        })
+    else:
+        fit_df = pd.DataFrame({x_col: x_full_inv.flatten(), f"Fitted_{y_col}": y_full_inv.flatten()})
     if st.button("Download Fit Data"):
         fit_df = pd.DataFrame({x_col: x_full_inv.flatten(), f"Fitted_{y_col}": y_full_inv.flatten()})
         st.download_button("Download CSV", fit_df.to_csv(index=False), file_name="nn_fitted_curve.csv")
