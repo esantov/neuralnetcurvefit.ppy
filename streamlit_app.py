@@ -149,8 +149,11 @@ if uploaded_file:
         st.session_state["export_tables"].append(("Tt Summary", tt_df.copy()))
         st.success("Tt data added to report")
 
-    st.write("---")
-    export_selections = st.multiselect("Select report contents to export", [n for n, _ in st.session_state["export_tables"]] + [n for n, _ in st.session_state["export_plots"]])
+st.subheader("Select elements to include in report")
+for i, (key, included) in enumerate(st.session_state['report_elements'].items(), start=1):
+    label_type = "Plot" if "Plot" in key else "Table"
+    label = f"{label_type} {i}"
+    st.session_state['report_elements'][key] = st.checkbox(label, value=included)
 
     if st.button("📥 Export Report as Excel"):
         output = io.BytesIO()
@@ -200,15 +203,7 @@ if uploaded_file:
                 worksheet_name = f"Plot_{idx+1}"[:31]
                 worksheet = workbook.add_worksheet(worksheet_name)
                 worksheet.insert_image('B2', f"{plot_title}.png", {'image_data': io.BytesIO(img_bytes)})
-    
-        output.seek(0)
-        st.download_button(
-            label="Download Excel Report",
-            data=output,
-            file_name="curve_fit_report.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    
+             
         output.seek(0)
         st.download_button("📥 Download Full Report", output, file_name="Final_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         st.download_button(
