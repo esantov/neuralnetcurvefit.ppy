@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import io
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.neural_network import MLPRegressor
@@ -218,6 +219,23 @@ if uploaded_file:
             y_full_pred = logistic_b(scaler_x.inverse_transform(x_full).ravel(), *popt)
             fit_label = "Logistic B Fit"
 
+        # Optionally calculate x for a given y
+    st.markdown("### Predict X for given Y")
+    input_y = st.number_input("Enter Y value to estimate X", value=float(df[y_col].mean()))
+    x_for_y = "N/A"
+    if fit_label and 'popt' in locals():
+        try:
+            from scipy.optimize import root_scalar
+            def root_func(x):
+                return model_func(x, *popt) - input_y
+            bracket = [float(x_full_inv.min()), float(x_full_inv.max())]
+            result = root_scalar(root_func, bracket=bracket)
+            if result.converged:
+                x_for_y = round(result.root, 4)
+        except Exception as e:
+            x_for_y = f"Error: {e}"
+    st.write(f"**Estimated X for Y = {input_y}:** {x_for_y}")
+
     # Inverse transform and plot
     x_full_inv = scaler_x.inverse_transform(x_full)
     if model_option == "Neural Network":
@@ -233,3 +251,58 @@ if uploaded_file:
     ax.set_title(f"{fit_label}")
     ax.legend()
     st.pyplot(fig)
+
+    # Export plot as PNG
+
+    # Export prediction table
+    st.markdown("### Batch Y → X Table")
+    y_values = st.text_area("Enter Y values (comma-separated)", value="0.2, 0.5, 0.8")
+    x_estimates = []
+    if fit_label and 'popt' in locals():
+        try:
+            y_vals = [float(val.strip()) for val in y_values.split(',') if val.strip() != '']
+            for val in y_vals:
+                def root_func(x): return model_func(x, *popt) - val
+                from scipy.optimize import root_scalar
+                try:
+                    result = root_scalar(root_func, bracket=[float(x_full_inv.min()), float(x_full_inv.max())])
+                    if result.converged:
+                        x_estimates.append((val, round(result.root, 4)))
+                    else:
+                        x_estimates.append((val, 'N/A'))
+                except:
+                    x_estimates.append((val, 'Error'))
+            x_table = pd.DataFrame(x_estimates, columns=["Y Value", "Estimated X"])
+            st.dataframe(x_table)
+
+            if st.button("Add X-for-Y Table to Export"):
+                if 'export_tables' not in st.session_state:
+                    st.session_state['export_tables'] = []
+                st.session_state['export_tables'].append(("Y→X Table", x_table.copy()))
+                st.success("Added to export queue!")
+        except:
+            st.warning("Invalid Y values")
+    plot_buf = io.BytesIO()
+    fig.savefig(plot_buf, format="png")
+    if 'export_tables' not in st.session_state:
+        st.session_state['export_tables'] = []
+    plot_buf.seek(0)
+    st.download_button(
+        label="📥 Download Plot as PNG",
+        data=plot_buf,
+        file_name="fitted_plot.png",
+        mime="image/png"
+    )
+
+    if st.button("📥 Export All Tables to Excel"):
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            for name, table in st.session_state['export_tables']:
+                table.to_excel(writer, sheet_name=name[:31], index=False)
+        output.seek(0)
+        st.download_button(
+            label="Download All Tables as Excel",
+            data=output,
+            file_name="fitting_results.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
