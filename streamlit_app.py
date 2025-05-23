@@ -23,6 +23,7 @@ if uploaded_file:
     y_col = st.selectbox("Select Y-axis column", df.select_dtypes(include='number').columns)
     samples = df[sample_col].dropna().unique().tolist()
     selected_samples = st.multiselect("Select samples to fit", samples, default=samples)
+    treat_as_replicates = st.checkbox("Treat all selected samples as replicates (fit together)", value=False)
     df = df[df[sample_col].isin(selected_samples)]
 
     # Select columns
@@ -60,20 +61,21 @@ if uploaded_file:
     x_full = np.linspace(x_scaled.min(), x_scaled.max(), 1000).reshape(-1, 1)
 
     if model_option == "Neural Network":
-        nn = MLPRegressor(
-            hidden_layer_sizes=(hidden_layers, hidden_layers),
-            activation='tanh',
-            solver='adam',
-            learning_rate='adaptive',
-            early_stopping=True,
-            max_iter=10000,
-            random_state=42
-        )
-        nn.fit(X_train, y_train.ravel())
-        y_pred = nn.predict(X_test)
-        y_full_pred = nn.predict(x_full)
+        if treat_as_replicates:
+            nn = MLPRegressor(
+                hidden_layer_sizes=(hidden_layers, hidden_layers),
+                activation='tanh',
+                solver='adam',
+                learning_rate='adaptive',
+                early_stopping=True,
+                max_iter=10000,
+                random_state=42
+            )
+            nn.fit(X_train, y_train.ravel())
+            y_pred = nn.predict(X_test)
+            y_full_pred = nn.predict(x_full)
         fit_label = "NN Fit"
-    else:
+    elif treat_as_replicates:
         x = scaler_x.inverse_transform(X_train)
         y = scaler_y.inverse_transform(y_train)
         if model_option == "Exponential":
@@ -91,143 +93,3 @@ if uploaded_file:
             y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
             y_full_pred = four_pl(scaler_x.inverse_transform(x_full).ravel(), *popt)
             fit_label = "4PL Fit"
-    
-    y_pred_inv = scaler_y.inverse_transform(np.array(y_pred).reshape(-1, 1))
-    y_test_inv = scaler_y.inverse_transform(y_test)
-
-    r2 = r2_score(y_test_inv, y_pred_inv)
-    rmse = np.sqrt(mean_squared_error(y_test_inv, y_pred_inv))
-    fit_stats = pd.DataFrame({
-        'Sample': ['ALL'],
-        'Model': [model_option],
-        'R²': [round(r2, 4)],
-        'RMSE': [round(rmse, 4)]
-    })
-    st.write(f"**R²:** {r2:.4f}, **RMSE:** {rmse:.4f}")
-
-    # Domain-specific suggestion
-    st.info("ℹ️ For microbial growth or respirometry data, exponential or sigmoid-like models (e.g., Gompertz, 4PL) are commonly used.")
-
-    # Suggestion
-    if r2 < 0.90:
-        st.warning("⚠️ The neural network fit may not be optimal. Consider trying a parametric model (e.g., 4PL, Gompertz) or adjusting network architecture.")
-    elif r2 < 0.95:
-        st.info("ℹ️ Fit is acceptable but could be improved with tuning or alternative models.")
-    else:
-        st.success("✅ Excellent fit!")
-
-    # Plot per sample
-    for sample in selected_samples:
-        fig, ax = plt.subplots()
-        group = df[df[sample_col] == sample]
-        x_sample = group[x_col].values.reshape(-1, 1)
-        y_sample = group[y_col].values.reshape(-1, 1)
-
-        x_scaled = scaler_x.fit_transform(x_sample)
-        y_scaled = scaler_y.fit_transform(y_sample)
-
-        x_full = np.linspace(x_scaled.min(), x_scaled.max(), 1000).reshape(-1, 1)
-
-        if model_option == "Neural Network":
-            nn = MLPRegressor(hidden_layer_sizes=(hidden_layers, hidden_layers), activation='tanh',
-                             solver='adam', learning_rate='adaptive', early_stopping=True,
-                             max_iter=10000, random_state=42)
-            nn.fit(x_scaled, y_scaled.ravel())
-            y_pred = nn.predict(x_full)
-        else:
-            x_inv = scaler_x.inverse_transform(x_scaled)
-            y_inv = scaler_y.inverse_transform(y_scaled)
-            if model_option == "Exponential":
-                popt, _ = curve_fit(exponential, x_inv.ravel(), y_inv.ravel(), maxfev=10000)
-                y_pred = exponential(scaler_x.inverse_transform(x_full).ravel(), *popt)
-            elif model_option == "Gompertz":
-                popt, _ = curve_fit(gompertz, x_inv.ravel(), y_inv.ravel(), maxfev=10000)
-                y_pred = gompertz(scaler_x.inverse_transform(x_full).ravel(), *popt)
-            elif model_option == "4PL":
-                popt, _ = curve_fit(four_pl, x_inv.ravel(), y_inv.ravel(), maxfev=10000)
-                y_pred = four_pl(scaler_x.inverse_transform(x_full).ravel(), *popt)
-
-        x_plot = scaler_x.inverse_transform(x_full).ravel()
-        if model_option == "Neural Network":
-            y_plot = scaler_y.inverse_transform(y_pred.reshape(-1, 1)).ravel()
-        else:
-            y_plot = y_pred
-
-        ax.plot(group[x_col], group[y_col], 'o', label=f'{sample} Original')
-        ax.plot(x_plot, y_plot, '-', label=f'{sample} Fit')
-        ax.set_title(f"{sample} - {model_option} Fit")
-        ax.set_xlabel(x_col)
-        ax.set_ylabel(y_col)
-        ax.legend()
-        st.pyplot(fig)
-
-    # Export plots and data as Excel with images
-    import io
-    import xlsxwriter
-    from PIL import Image
-
-    export_buf = io.BytesIO()
-    if st.button("📥 Export All to Excel"):
-        with pd.ExcelWriter(export_buf, engine="xlsxwriter") as writer:
-            df.to_excel(writer, sheet_name="Input Data", index=False)
-            fit_df.to_excel(writer, sheet_name="Fitted Curve", index=False)
-            fit_stats.to_excel(writer, sheet_name="Fit Stats", index=False)
-            workbook = writer.book
-            for sample in selected_samples:
-                fig, ax = plt.subplots()
-                group = df[df[sample_col] == sample]
-                x_sample = group[x_col].values.reshape(-1, 1)
-                y_sample = group[y_col].values.reshape(-1, 1)
-                x_scaled = scaler_x.fit_transform(x_sample)
-                y_scaled = scaler_y.fit_transform(y_sample)
-                x_full = np.linspace(x_scaled.min(), x_scaled.max(), 1000).reshape(-1, 1)
-
-                if model_option == "Neural Network":
-                    nn = MLPRegressor(hidden_layer_sizes=(hidden_layers, hidden_layers), activation='tanh',
-                                     solver='adam', learning_rate='adaptive', early_stopping=True,
-                                     max_iter=10000, random_state=42)
-                    nn.fit(x_scaled, y_scaled.ravel())
-                    y_pred = nn.predict(x_full)
-                else:
-                    x_inv = scaler_x.inverse_transform(x_scaled)
-                    y_inv = scaler_y.inverse_transform(y_scaled)
-                    if model_option == "Exponential":
-                        popt, _ = curve_fit(exponential, x_inv.ravel(), y_inv.ravel(), maxfev=10000)
-                        y_pred = exponential(scaler_x.inverse_transform(x_full).ravel(), *popt)
-                    elif model_option == "Gompertz":
-                        popt, _ = curve_fit(gompertz, x_inv.ravel(), y_inv.ravel(), maxfev=10000)
-                        y_pred = gompertz(scaler_x.inverse_transform(x_full).ravel(), *popt)
-                    elif model_option == "4PL":
-                        popt, _ = curve_fit(four_pl, x_inv.ravel(), y_inv.ravel(), maxfev=10000)
-                        y_pred = four_pl(scaler_x.inverse_transform(x_full).ravel(), *popt)
-
-                x_plot = scaler_x.inverse_transform(x_full).ravel()
-                y_plot = scaler_y.inverse_transform(y_pred.reshape(-1, 1)).ravel() if model_option == "Neural Network" else y_pred
-
-                ax.plot(group[x_col], group[y_col], 'o', label='Original')
-                ax.plot(x_plot, y_plot, '-', label='Fit')
-                ax.set_title(f"{sample} - {model_option}")
-                ax.legend()
-
-                image_buf = io.BytesIO()
-                fig.savefig(image_buf, format='png', bbox_inches='tight')
-                image_buf.seek(0)
-                sheet = workbook.add_worksheet(sample[:31])
-                sheet.insert_image('B2', f"{sample}.png", {"image_data": image_buf})
-
-        export_buf.seek(0)
-        st.download_button("Download Excel Report", data=export_buf, file_name="fitted_report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-    # Optional: Save model output
-    if model_option != "Neural Network" and 'ci' in locals():
-        fit_df = pd.DataFrame({
-            x_col: x_full_inv.flatten(),
-            f"Fitted_{y_col}": y_full_inv.flatten(),
-            "Lower_CI": (y_full_inv.flatten() - ci),
-            "Upper_CI": (y_full_inv.flatten() + ci)
-        })
-    else:
-        fit_df = pd.DataFrame({x_col: x_full_inv.flatten(), f"Fitted_{y_col}": y_full_inv.flatten()})
-    if st.button("Download Fit Data"):
-        fit_df = pd.DataFrame({x_col: x_full_inv.flatten(), f"Fitted_{y_col}": y_full_inv.flatten()})
-        st.download_button("Download CSV", fit_df.to_csv(index=False), file_name="nn_fitted_curve.csv")
