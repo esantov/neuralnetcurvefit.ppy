@@ -76,23 +76,23 @@ if not np.issubdtype(x_data.dtype, np.number) or not np.issubdtype(y_data.dtype,
                     try:
                         popt, _ = curve_fit(exponential, x.ravel(), y.ravel(), maxfev=10000)
                     except RuntimeError:
-                st.warning(f"⚠️ {model_option} model failed to converge. Try a different model.")
-                popt = [0] * 4
-                    y_pred = exponential(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                elif model == "Gompertz":
-                    popt, _ = curve_fit(gompertz, x.ravel(), y.ravel(), maxfev=10000)
-                    y_pred = gompertz(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                elif model == "4PL":
-                    popt, _ = curve_fit(four_pl, x.ravel(), y.ravel(), maxfev=10000)
-                    y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                elif model == "Sigmoid B":
-                    popt, _ = curve_fit(sigmoid_b, x.ravel(), y.ravel(), maxfev=10000)
-                    y_pred = sigmoid_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                elif model == "Logistic B":
-                    popt, _ = curve_fit(logistic_b, x.ravel(), y.ravel(), maxfev=10000)
-                    y_pred = logistic_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                else:
-                    continue
+                        st.warning(f"⚠️ {model_option} model failed to converge. Try a different model.")
+                        popt = [0] * 4
+                            y_pred = exponential(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                        elif model == "Gompertz":
+                            popt, _ = curve_fit(gompertz, x.ravel(), y.ravel(), maxfev=10000)
+                            y_pred = gompertz(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                        elif model == "4PL":
+                            popt, _ = curve_fit(four_pl, x.ravel(), y.ravel(), maxfev=10000)
+                            y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                        elif model == "Sigmoid B":
+                            popt, _ = curve_fit(sigmoid_b, x.ravel(), y.ravel(), maxfev=10000)
+                            y_pred = sigmoid_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                        elif model == "Logistic B":
+                            popt, _ = curve_fit(logistic_b, x.ravel(), y.ravel(), maxfev=10000)
+                            y_pred = logistic_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                        else:
+                            continue
                 y_test_inv = scaler_y.inverse_transform(y_test)
                 y_pred_inv = scaler_y.inverse_transform(np.array(y_pred).reshape(-1, 1))
                 r2 = r2_score(y_test_inv, y_pred_inv)
