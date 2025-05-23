@@ -10,13 +10,11 @@ from sklearn.metrics import r2_score
 from scipy.optimize import curve_fit, root_scalar
 
 st.set_page_config(
-    layout="centered",  # Options: "centered" or "wide"
+    layout="centered", 
     page_title="Neural Network Curve Fitting",
     page_icon="📈"
 )
 
-st.set_page_config(layout="wide")
-st.title("Neural Network + Parametric Curve Fitting")
 
 # ========== Initialize state ==========
 if "export_tables" not in st.session_state:
