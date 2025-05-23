@@ -57,6 +57,8 @@ if uploaded_file:
         return D + (A - D) / (1 + (x / C) ** B)
 
     fit_label = None
+    x_full = np.linspace(x_scaled.min(), x_scaled.max(), 1000).reshape(-1, 1)
+
     if model_option == "Neural Network":
         nn = MLPRegressor(
             hidden_layer_sizes=(hidden_layers, hidden_layers),
@@ -89,8 +91,6 @@ if uploaded_file:
             y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
             y_full_pred = four_pl(scaler_x.inverse_transform(x_full).ravel(), *popt)
             fit_label = "4PL Fit"
-    nn.fit(X_train, y_train.ravel())
-
     # Predict
     y_pred = nn.predict(X_test)
     y_pred_inv = scaler_y.inverse_transform(y_pred.reshape(-1, 1))
@@ -113,7 +113,7 @@ if uploaded_file:
 
     # Plot
     fig, ax = plt.subplots()
-    x_full = np.linspace(x_scaled.min(), x_scaled.max(), 1000).reshape(-1, 1)
+    # x_full already defined above
     y_full_pred = nn.predict(x_full)
     x_full_inv = scaler_x.inverse_transform(x_full)
     y_full_inv = scaler_y.inverse_transform(y_full_pred.reshape(-1, 1))
