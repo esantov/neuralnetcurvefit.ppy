@@ -68,8 +68,8 @@ if uploaded_file:
                         popt, _ = curve_fit(exponential, x.ravel(), y.ravel(), maxfev=10000)
                         y_pred = exponential(scaler_x.inverse_transform(X_test).ravel(), *popt)
                     except RuntimeError:
-                        st.warning("⚠️ Exponential model failed to converge.")
-                        continue(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                        st.warning("⚠️ Model failed to converge.")
+                        continue.ravel(), *popt)
                 elif model == "Gompertz":
                     try:
                         popt, _ = curve_fit(gompertz, x.ravel(), y.ravel(), maxfev=10000)
