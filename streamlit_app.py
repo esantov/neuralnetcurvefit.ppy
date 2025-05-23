@@ -149,3 +149,40 @@ if uploaded_file:
                     worksheet.insert_image("B2", f"{name}.png", {"image_data": img_stream})
         output.seek(0)
         st.download_button("📤 Download Excel Report", data=output, file_name="fitting_report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+import xlsxwriter
+
+if 'report_data' not in st.session_state:
+    st.session_state['report_data'] = []
+
+# Button to save current fit and original data
+if st.button("Add Current Data to Report"):
+    report_entry = {
+        "label": fit_label,
+        "original": df[[x_col, y_col]],
+        "summary": pd.DataFrame([{
+            "Model": model_option,
+            "R²": round(r2_score(scaler_y.inverse_transform(y_test), scaler_y.inverse_transform(np.array(y_pred).reshape(-1, 1))), 4) if model_option != "Neural Network" else "N/A",
+            "RMSE": round(np.sqrt(mean_squared_error(scaler_y.inverse_transform(y_test), scaler_y.inverse_transform(np.array(y_pred).reshape(-1, 1)))), 4) if model_option != "Neural Network" else "N/A",
+            "Parameters": str(popt) if 'popt' in locals() else "N/A",
+            "Equation": fit_label,
+            "Inverse": "Defined in logic"  # Replace with actual inverse if available
+        }])
+    }
+    st.session_state['report_data'].append(report_entry)
+    st.success("Added to report queue")
+
+# Export full report to Excel
+if st.button("📥 Export Final Report (XLSX)"):
+    final_buf = io.BytesIO()
+    with pd.ExcelWriter(final_buf, engine='xlsxwriter') as writer:
+        for idx, entry in enumerate(st.session_state['report_data']):
+            sheet_name = f"Sample {idx+1} - {entry['label'][:20]}"
+            entry['original'].to_excel(writer, sheet_name + " Raw", index=False)
+            entry['summary'].to_excel(writer, sheet_name + " Summary", index=False)
+    final_buf.seek(0)
+    st.download_button(
+        label="Download Full Report",
+        data=final_buf,
+        file_name="fitting_report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
