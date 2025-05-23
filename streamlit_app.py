@@ -211,3 +211,9 @@ if uploaded_file:
     
             output.seek(0)
             st.download_button("📥 Download Full Report", output, file_name="Final_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+st.download_button(
+    label="📥 Download Full Curve Fit Report",
+    data=output_bytes,
+    file_name="curve_fit_report.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
