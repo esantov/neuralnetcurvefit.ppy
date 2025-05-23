@@ -217,3 +217,13 @@ if uploaded_file:
             file_name="curve_fit_report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        
+        # This assumes you already have your final report saved in `output` as a BytesIO object
+        
+        output.seek(0)  # Make sure to seek to the beginning before download
+        st.download_button(
+            label="📥 Download Full Curve Fit Report",
+            data=output,
+            file_name="curve_fit_report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
