@@ -81,7 +81,10 @@ if uploaded_file:
     else:
         model_option = st.radio("Choose model to fit", model_options)
 
-    def exponential(x, a, b):
+    def linear(x, a, b):
+    return a * x + b
+
+def exponential(x, a, b):
         return a * np.exp(b * x)
 
     def gompertz(x, a, b, c):
@@ -199,11 +202,22 @@ if uploaded_file:
     st.markdown("### Predict X for given Y")
     input_y = st.number_input("Enter Y value to estimate X", value=float(df[y_col].mean()))
     x_for_y = "N/A"
+    y_full_pred_func = None
     if fit_label and 'popt' in locals():
+        if model_option == "Exponential":
+            y_full_pred_func = lambda x: exponential(x, *popt)
+        elif model_option == "Gompertz":
+            y_full_pred_func = lambda x: gompertz(x, *popt)
+        elif model_option == "4PL":
+            y_full_pred_func = lambda x: four_pl(x, *popt)
+        elif model_option == "5PL":
+            y_full_pred_func = lambda x: five_pl(x, *popt)
+        elif model_option == "Linear":
+            y_full_pred_func = lambda x: popt[0] * x + popt[1]
         try:
             from scipy.optimize import root_scalar
             def root_func(x):
-                return model_func(x, *popt) - input_y
+                return y_full_pred_func(x) - input_y
             bracket = [float(x_full_inv.min()), float(x_full_inv.max())]
             result = root_scalar(root_func, bracket=bracket)
             if result.converged:
