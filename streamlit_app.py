@@ -48,12 +48,7 @@ if uploaded_file:
 
     # Neural network regressor
     model_options = [
-        "Neural Network", "Exponential", "Gompertz", "4PL",
-        "Sigmoid B", "Sigmoid B Modified", "Logistic A", "Logistic B",
-        "Don Levin", "5PL", "4PL 2D", "Generalised Logistic",
-        "Gompertz A", "Gompertz B", "Gompertz C", "Hill",
-        "Jacquelin", "Janoschek", "Janoschek Modified",
-        "Richards", "Sigmoid A", "Sigmoid A Modified"
+        "Neural Network", "Exponential", "Gompertz", "4PL", "5PL", "Linear"
     ]
 
     auto_suggest = st.checkbox("Suggest best model automatically")
@@ -98,53 +93,37 @@ if uploaded_file:
     def five_pl(x, A, B, C, D, F):
         return D + (A - D) / ((1 + (x / C) ** B) ** F)
 
-    def sigmoid_b(x, a, b, c):
-        return a / (1.0 + np.exp(-(x - b) / c))
+            return a / (1.0 + np.exp(-(x - b) / c))
 
-    def sigmoid_b_mod(x, a, b, c, d):
-        return a / (1.0 + np.exp(-(x - b) / c)) ** d
+            return a / (1.0 + np.exp(-(x - b) / c)) ** d
 
-    def logistic_a(x, a, b, c):
-        return a / (1.0 + b * np.exp(-c * x))
+            return a / (1.0 + b * np.exp(-c * x))
 
-    def logistic_b(x, a, b, c):
-        return a / (1.0 + (x / b) ** c)
+            return a / (1.0 + (x / b) ** c)
 
-    def sigmoid_a(x, a, b):
-        return 1.0 / (1.0 + np.exp(-a * (x - b)))
+            return 1.0 / (1.0 + np.exp(-a * (x - b)))
 
-    def sigmoid_a_mod(x, a, b, c):
-        return 1.0 / (1.0 + np.exp(-a * (x - b))) ** c
+            return 1.0 / (1.0 + np.exp(-a * (x - b))) ** c
 
-    def richards(x, a, b, c, d):
-        return 1.0 / (a + b * np.exp(c * x)) ** d
+            return 1.0 / (a + b * np.exp(c * x)) ** d
 
-    def janoschek(x, a, b, c):
-        return a - (1.0 - np.exp(-b * x ** c))
+            return a - (1.0 - np.exp(-b * x ** c))
 
-    def janoschek_mod(x, a, w0, b, c):
-        return a - (a - w0) * (1.0 - np.exp(-b * x ** c))
+            return a - (a - w0) * (1.0 - np.exp(-b * x ** c))
 
-    def hill(x, a, b, c):
-        return a * x ** b / (c ** b + x ** b)
+            return a * x ** b / (c ** b + x ** b)
 
-    def gompertz_a(x, a, b, c):
-        return a * np.exp(-np.exp(b - c * x))
+            return a * np.exp(-np.exp(b - c * x))
 
-    def gompertz_b(x, a, b, c):
-        return a * np.exp(-np.exp((x - b) / c))
+            return a * np.exp(-np.exp((x - b) / c))
 
-    def gompertz_c(x, a, b, c):
-        return a * np.exp(b * np.exp(c * x))
+            return a * np.exp(b * np.exp(c * x))
 
-    def generalised_logistic(x, A, C, T, B, M):
-        return A + C / ((1 + T * np.exp(-B * (x - M))) ** (1 / T))
+            return A + C / ((1 + T * np.exp(-B * (x - M))) ** (1 / T))
 
-    def jacquelin(x, L, b, k, c, h):
-        return L / (1.0 + b * np.exp(-k * x) + c * np.exp(h * x))
+            return L / (1.0 + b * np.exp(-k * x) + c * np.exp(h * x))
 
-    def don_levin(x, a1, b1, c1, a2, b2, c2, a3, b3, c3):
-        return (
+            return (
             a1 / (1.0 + np.exp(-(x - b1) / c1)) +
             a2 / (1.0 + np.exp(-(x - b2) / c2)) +
             a3 / (1.0 + np.exp(-(x - b3) / c3))
