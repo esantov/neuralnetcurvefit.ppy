@@ -90,7 +90,7 @@ if uploaded_file:
                         y_pred = sigmoid_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
                     except RuntimeError:
                         st.warning("⚠️ Sigmoid B model failed to converge.")
-                        continue(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                        continue
                 elif model == "Logistic B":
                     try:
                         popt, _ = curve_fit(logistic_b, x.ravel(), y.ravel(), maxfev=10000)
