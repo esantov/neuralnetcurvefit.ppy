@@ -93,41 +93,37 @@ if uploaded_file:
     def five_pl(x, A, B, C, D, F):
         return D + (A - D) / ((1 + (x / C) ** B) ** F)
 
-            return a / (1.0 + np.exp(-(x - b) / c))
 
-            return a / (1.0 + np.exp(-(x - b) / c)) ** d
 
-            return a / (1.0 + b * np.exp(-c * x))
 
-            return a / (1.0 + (x / b) ** c)
 
-            return 1.0 / (1.0 + np.exp(-a * (x - b)))
 
-            return 1.0 / (1.0 + np.exp(-a * (x - b))) ** c
 
-            return 1.0 / (a + b * np.exp(c * x)) ** d
 
-            return a - (1.0 - np.exp(-b * x ** c))
 
-            return a - (a - w0) * (1.0 - np.exp(-b * x ** c))
 
-            return a * x ** b / (c ** b + x ** b)
 
-            return a * np.exp(-np.exp(b - c * x))
 
-            return a * np.exp(-np.exp((x - b) / c))
 
-            return a * np.exp(b * np.exp(c * x))
 
-            return A + C / ((1 + T * np.exp(-B * (x - M))) ** (1 / T))
 
-            return L / (1.0 + b * np.exp(-k * x) + c * np.exp(h * x))
 
-            return (
-            a1 / (1.0 + np.exp(-(x - b1) / c1)) +
-            a2 / (1.0 + np.exp(-(x - b2) / c2)) +
-            a3 / (1.0 + np.exp(-(x - b3) / c3))
-        )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def sigmoid_b(x, a, b, c):
         return a / (1.0 + np.exp(-(x - b) / c))
