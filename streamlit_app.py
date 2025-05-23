@@ -42,7 +42,15 @@ if uploaded_file:
 
     # Neural network regressor
     hidden_layers = st.slider("Hidden layer sizes", 1, 100, 50)
-    nn = MLPRegressor(hidden_layer_sizes=(hidden_layers,), max_iter=5000, random_state=42)
+    nn = MLPRegressor(
+        hidden_layer_sizes=(hidden_layers, hidden_layers),  # deeper net
+        activation='tanh',
+        solver='adam',
+        learning_rate='adaptive',
+        early_stopping=True,
+        max_iter=10000,
+        random_state=42
+    )
     nn.fit(X_train, y_train.ravel())
 
     # Predict
@@ -56,7 +64,7 @@ if uploaded_file:
 
     # Plot
     fig, ax = plt.subplots()
-    x_full = np.linspace(x_scaled.min(), x_scaled.max(), 500).reshape(-1, 1)
+    x_full = np.linspace(x_scaled.min(), x_scaled.max(), 1000).reshape(-1, 1)
     y_full_pred = nn.predict(x_full)
     x_full_inv = scaler_x.inverse_transform(x_full)
     y_full_inv = scaler_y.inverse_transform(y_full_pred.reshape(-1, 1))
