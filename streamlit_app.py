@@ -27,10 +27,6 @@ if uploaded_file:
     treat_as_replicates = st.checkbox("Treat all selected samples as replicates (fit together)", value=False)
     df = df[df[sample_col].isin(selected_samples)]
 
-    # Select columns
-    x_col = st.selectbox("Select X column", df.columns)
-    y_col = st.selectbox("Select Y column", df.columns)
-
     # Prepare data
     x_data = df[x_col].values.reshape(-1, 1)
     y_data = df[y_col].values.reshape(-1, 1)
