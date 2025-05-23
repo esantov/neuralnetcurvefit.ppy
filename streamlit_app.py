@@ -125,7 +125,13 @@ if uploaded_file:
     ax.set_title(f"Fitting: {model_choice}")
     ax.set_xlabel(x_col)
     ax.set_ylabel(y_col)
-    ax.legend()
+    ax.legend(
+        bbox_to_anchor=(1.05, 1),
+        loc='upper left',
+        borderaxespad=0.,
+        fontsize='small'
+    )
+
     st.pyplot(fig)
 
     # ===== Add to report buttons =====
