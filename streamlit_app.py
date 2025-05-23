@@ -36,6 +36,15 @@ if uploaded_file:
 
     scaler_x = MinMaxScaler()
     scaler_y = MinMaxScaler()
+    
+    # Validate data
+if np.any(pd.isnull(x_data)) or np.any(pd.isnull(y_data)):
+    st.error("❌ Missing values detected in X or Y data. Please clean your dataset.")
+    st.stop()
+if not np.issubdtype(x_data.dtype, np.number) or not np.issubdtype(y_data.dtype, np.number):
+    st.error("❌ Non-numeric data detected in selected X or Y columns.")
+    st.stop()
+    
     x_scaled = scaler_x.fit_transform(x_data)
     y_scaled = scaler_y.fit_transform(y_data)
 
