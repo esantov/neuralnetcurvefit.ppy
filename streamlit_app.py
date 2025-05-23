@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.neural_network import MLPRegressor
 from sklearn.metrics import mean_squared_error, r2_score
+from scipy.optimize import curve_fit
 
 st.title("Neural Network Curve Fitting")
 
@@ -41,16 +42,50 @@ if uploaded_file:
     X_train, X_test, y_train, y_test = train_test_split(x_scaled, y_scaled, test_size=0.2, random_state=42)
 
     # Neural network regressor
-    hidden_layers = st.slider("Hidden layer sizes", 1, 100, 50)
-    nn = MLPRegressor(
-        hidden_layer_sizes=(hidden_layers, hidden_layers),  # deeper net
-        activation='tanh',
-        solver='adam',
-        learning_rate='adaptive',
-        early_stopping=True,
-        max_iter=10000,
-        random_state=42
-    )
+    model_option = st.radio("Choose model to fit", ["Neural Network", "Exponential", "Gompertz", "4PL"])
+
+    def exponential(x, a, b):
+        return a * np.exp(b * x)
+
+    def gompertz(x, a, b, c):
+        return a * np.exp(-b * np.exp(-c * x))
+
+    def four_pl(x, A, B, C, D):
+        return D + (A - D) / (1 + (x / C) ** B)
+
+    fit_label = None
+    if model_option == "Neural Network":
+        nn = MLPRegressor(
+            hidden_layer_sizes=(hidden_layers, hidden_layers),
+            activation='tanh',
+            solver='adam',
+            learning_rate='adaptive',
+            early_stopping=True,
+            max_iter=10000,
+            random_state=42
+        )
+        nn.fit(X_train, y_train.ravel())
+        y_pred = nn.predict(X_test)
+        y_full_pred = nn.predict(x_full)
+        fit_label = "NN Fit"
+    else:
+        x = scaler_x.inverse_transform(X_train)
+        y = scaler_y.inverse_transform(y_train)
+        if model_option == "Exponential":
+            popt, _ = curve_fit(exponential, x.ravel(), y.ravel(), maxfev=10000)
+            y_pred = exponential(scaler_x.inverse_transform(X_test).ravel(), *popt)
+            y_full_pred = exponential(scaler_x.inverse_transform(x_full).ravel(), *popt)
+            fit_label = "Exponential Fit"
+        elif model_option == "Gompertz":
+            popt, _ = curve_fit(gompertz, x.ravel(), y.ravel(), maxfev=10000)
+            y_pred = gompertz(scaler_x.inverse_transform(X_test).ravel(), *popt)
+            y_full_pred = gompertz(scaler_x.inverse_transform(x_full).ravel(), *popt)
+            fit_label = "Gompertz Fit"
+        elif model_option == "4PL":
+            popt, _ = curve_fit(four_pl, x.ravel(), y.ravel(), maxfev=10000)
+            y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
+            y_full_pred = four_pl(scaler_x.inverse_transform(x_full).ravel(), *popt)
+            fit_label = "4PL Fit"
     nn.fit(X_train, y_train.ravel())
 
     # Predict
@@ -62,6 +97,17 @@ if uploaded_file:
     rmse = np.sqrt(mean_squared_error(y_test_inv, y_pred_inv))
     st.write(f"**R²:** {r2:.4f}, **RMSE:** {rmse:.4f}")
 
+    # Domain-specific suggestion
+    st.info("ℹ️ For microbial growth or respirometry data, exponential or sigmoid-like models (e.g., Gompertz, 4PL) are commonly used.")
+
+    # Suggestion
+    if r2 < 0.90:
+        st.warning("⚠️ The neural network fit may not be optimal. Consider trying a parametric model (e.g., 4PL, Gompertz) or adjusting network architecture.")
+    elif r2 < 0.95:
+        st.info("ℹ️ Fit is acceptable but could be improved with tuning or alternative models.")
+    else:
+        st.success("✅ Excellent fit!")
+
     # Plot
     fig, ax = plt.subplots()
     x_full = np.linspace(x_scaled.min(), x_scaled.max(), 1000).reshape(-1, 1)
@@ -70,7 +116,7 @@ if uploaded_file:
     y_full_inv = scaler_y.inverse_transform(y_full_pred.reshape(-1, 1))
 
     ax.plot(df[x_col], df[y_col], 'o', label='Original')
-    ax.plot(x_full_inv, y_full_inv, '-', label='NN Fit')
+    ax.plot(x_full_inv, y_full_inv, '-', label=fit_label)
     ax.set_xlabel(x_col)
     ax.set_ylabel(y_col)
     ax.legend()
