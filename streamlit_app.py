@@ -75,25 +75,6 @@ if uploaded_file:
             y_pred = nn.predict(X_test)
             y_full_pred = nn.predict(x_full)
         fit_label = "NN Fit"
-
-# Inverse transform for visualization
-x_full_inv = scaler_x.inverse_transform(x_full)
-if model_option == "Neural Network":
-    y_full_inv = scaler_y.inverse_transform(np.array(y_full_pred).reshape(-1, 1))
-else:
-    y_full_inv = np.array(y_full_pred).reshape(-1, 1)
-
-# Plot
-fig, ax = plt.subplots()
-ax.plot(df[x_col], df[y_col], 'o', label='Original')
-ax.plot(x_full_inv, y_full_inv, '-', label=fit_label)
-ax.set_xlabel(x_col)
-ax.set_ylabel(y_col)
-ax.set_title(f"{fit_label}")
-ax.legend()
-st.pyplot(fig)
-
-    
     elif treat_as_replicates:
         x = scaler_x.inverse_transform(X_train)
         y = scaler_y.inverse_transform(y_train)
@@ -112,3 +93,19 @@ st.pyplot(fig)
             y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
             y_full_pred = four_pl(scaler_x.inverse_transform(x_full).ravel(), *popt)
             fit_label = "4PL Fit"
+
+    # Inverse transform and plot
+    x_full_inv = scaler_x.inverse_transform(x_full)
+    if model_option == "Neural Network":
+        y_full_inv = scaler_y.inverse_transform(np.array(y_full_pred).reshape(-1, 1))
+    else:
+        y_full_inv = np.array(y_full_pred).reshape(-1, 1)
+
+    fig, ax = plt.subplots()
+    ax.plot(df[x_col], df[y_col], 'o', label='Original')
+    ax.plot(x_full_inv, y_full_inv, '-', label=fit_label)
+    ax.set_xlabel(x_col)
+    ax.set_ylabel(y_col)
+    ax.set_title(f"{fit_label}")
+    ax.legend()
+    st.pyplot(fig)
