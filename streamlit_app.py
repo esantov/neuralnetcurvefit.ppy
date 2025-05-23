@@ -68,36 +68,8 @@ if uploaded_file:
                         popt, _ = curve_fit(exponential, x.ravel(), y.ravel(), maxfev=10000)
                         y_pred = exponential(scaler_x.inverse_transform(X_test).ravel(), *popt)
                     except RuntimeError:
-                        st.warning("⚠️ Model failed to converge.")
-                        continue
-                elif model == "Gompertz":
-                    try:
-                        popt, _ = curve_fit(gompertz, x.ravel(), y.ravel(), maxfev=10000)
-                        y_pred = gompertz(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                    except RuntimeError:
-                        st.warning("⚠️ Gompertz model failed to converge.")
-                        continue
-                elif model == "4PL":
-                    try:
-                        popt, _ = curve_fit(four_pl, x.ravel(), y.ravel(), maxfev=10000)
-                        y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                    except RuntimeError:
-                        st.warning("⚠️ 4PL model failed to converge.")
-                        continue
-                elif model == "Sigmoid B":
-                    try:
-                        popt, _ = curve_fit(sigmoid_b, x.ravel(), y.ravel(), maxfev=10000)
-                        y_pred = sigmoid_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                    except RuntimeError:
-                        st.warning("⚠️ Sigmoid B model failed to converge.")
-                        continue
-                elif model == "Logistic B":
-                    try:
-                        popt, _ = curve_fit(logistic_b, x.ravel(), y.ravel(), maxfev=10000)
-                        y_pred = logistic_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                    except RuntimeError:
                         st.warning("⚠️ Logistic B model failed to converge.")
-                        continue(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                        continue
                 else:
                     continue
                 y_test_inv = scaler_y.inverse_transform(y_test)
@@ -245,10 +217,6 @@ if uploaded_file:
             y_pred = logistic_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
             y_full_pred = logistic_b(scaler_x.inverse_transform(x_full).ravel(), *popt)
             fit_label = "Logistic B Fit"
-            popt, _ = curve_fit(four_pl, x.ravel(), y.ravel(), maxfev=10000)
-            y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
-            y_full_pred = four_pl(scaler_x.inverse_transform(x_full).ravel(), *popt)
-            fit_label = "4PL Fit"
 
     # Inverse transform and plot
     x_full_inv = scaler_x.inverse_transform(x_full)
