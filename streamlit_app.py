@@ -41,6 +41,9 @@ if uploaded_file:
     # Train/test split
     X_train, X_test, y_train, y_test = train_test_split(x_scaled, y_scaled, test_size=0.2, random_state=42)
 
+    # Select hidden layer size for NN
+    hidden_layers = st.slider("Hidden layer size", min_value=5, max_value=200, value=50)
+
     # Neural network regressor
     model_option = st.radio("Choose model to fit", ["Neural Network", "Exponential", "Gompertz", "4PL"])
 
