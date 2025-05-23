@@ -69,21 +69,21 @@ if uploaded_file:
                         y_pred = exponential(scaler_x.inverse_transform(X_test).ravel(), *popt)
                     except RuntimeError:
                         st.warning("⚠️ Model failed to converge.")
-                        continue, *popt)
+                        continue
                 elif model == "Gompertz":
                     try:
                         popt, _ = curve_fit(gompertz, x.ravel(), y.ravel(), maxfev=10000)
                         y_pred = gompertz(scaler_x.inverse_transform(X_test).ravel(), *popt)
                     except RuntimeError:
                         st.warning("⚠️ Gompertz model failed to converge.")
-                        continue.ravel(), *popt)
+                        continue
                 elif model == "4PL":
                     try:
                         popt, _ = curve_fit(four_pl, x.ravel(), y.ravel(), maxfev=10000)
                         y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
                     except RuntimeError:
                         st.warning("⚠️ 4PL model failed to converge.")
-                        continue(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                        continue
                 elif model == "Sigmoid B":
                     try:
                         popt, _ = curve_fit(sigmoid_b, x.ravel(), y.ravel(), maxfev=10000)
