@@ -83,7 +83,6 @@ if uploaded_file:
 
     def linear(x, a, b):
     return a * x + b
-    return a * x + b
 
 def exponential(x, a, b):
         return a * np.exp(b * x)
