@@ -64,7 +64,11 @@ if uploaded_file:
                 x = scaler_x.inverse_transform(X_train)
                 y = scaler_y.inverse_transform(y_train)
                 if model == "Exponential":
-                    popt, _ = curve_fit(exponential, x.ravel(), y.ravel(), maxfev=10000)
+                    try:
+                popt, _ = curve_fit(exponential, x.ravel(), y.ravel(), maxfev=10000)
+            except RuntimeError:
+                st.warning(f"⚠️ {model_option} model failed to converge. Try a different model.")
+                popt = [0] * 4
                     y_pred = exponential(scaler_x.inverse_transform(X_test).ravel(), *popt)
                 elif model == "Gompertz":
                     popt, _ = curve_fit(gompertz, x.ravel(), y.ravel(), maxfev=10000)
