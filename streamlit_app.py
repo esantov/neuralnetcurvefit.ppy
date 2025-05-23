@@ -79,7 +79,7 @@ if not np.issubdtype(x_data.dtype, np.number) or not np.issubdtype(y_data.dtype,
                         st.warning(f"⚠️ {model_option} model failed to converge. Try a different model.")
                         popt = [0] * 4
                         y_pred = exponential(scaler_x.inverse_transform(X_test).ravel(), *popt)
-                        elif model == "Gompertz":
+                        elif model == "gompertz":
                             popt, _ = curve_fit(gompertz, x.ravel(), y.ravel(), maxfev=10000)
                             y_pred = gompertz(scaler_x.inverse_transform(X_test).ravel(), *popt)
                         elif model == "4PL":
