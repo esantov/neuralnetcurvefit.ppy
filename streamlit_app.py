@@ -46,7 +46,52 @@ if uploaded_file:
     hidden_layers = st.slider("Hidden layer size", min_value=5, max_value=200, value=50)
 
     # Neural network regressor
-    model_option = st.radio("Choose model to fit", ["Neural Network", "Exponential", "Gompertz", "4PL"])
+    model_options = [
+        "Neural Network", "Exponential", "Gompertz", "4PL",
+        "Sigmoid B", "Sigmoid B Modified", "Logistic A", "Logistic B",
+        "Don Levin", "5PL", "4PL 2D", "Generalised Logistic",
+        "Gompertz A", "Gompertz B", "Gompertz C", "Hill",
+        "Jacquelin", "Janoschek", "Janoschek Modified",
+        "Richards", "Sigmoid A", "Sigmoid A Modified"
+    ]
+
+    auto_suggest = st.checkbox("Suggest best model automatically")
+    if auto_suggest:
+        best_r2 = -np.inf
+        best_model = None
+        for model in model_options:
+            try:
+                x = scaler_x.inverse_transform(X_train)
+                y = scaler_y.inverse_transform(y_train)
+                if model == "Exponential":
+                    popt, _ = curve_fit(exponential, x.ravel(), y.ravel(), maxfev=10000)
+                    y_pred = exponential(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                elif model == "Gompertz":
+                    popt, _ = curve_fit(gompertz, x.ravel(), y.ravel(), maxfev=10000)
+                    y_pred = gompertz(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                elif model == "4PL":
+                    popt, _ = curve_fit(four_pl, x.ravel(), y.ravel(), maxfev=10000)
+                    y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                elif model == "Sigmoid B":
+                    popt, _ = curve_fit(sigmoid_b, x.ravel(), y.ravel(), maxfev=10000)
+                    y_pred = sigmoid_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                elif model == "Logistic B":
+                    popt, _ = curve_fit(logistic_b, x.ravel(), y.ravel(), maxfev=10000)
+                    y_pred = logistic_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
+                else:
+                    continue
+                y_test_inv = scaler_y.inverse_transform(y_test)
+                y_pred_inv = scaler_y.inverse_transform(np.array(y_pred).reshape(-1, 1))
+                r2 = r2_score(y_test_inv, y_pred_inv)
+                if r2 > best_r2:
+                    best_r2 = r2
+                    best_model = model
+            except:
+                continue
+        model_option = best_model if best_model else "Exponential"
+        st.success(f"Best model by R²: {model_option} ({best_r2:.4f})")
+    else:
+        model_option = st.radio("Choose model to fit", model_options)
 
     def exponential(x, a, b):
         return a * np.exp(b * x)
@@ -56,6 +101,73 @@ if uploaded_file:
 
     def four_pl(x, A, B, C, D):
         return D + (A - D) / (1 + (x / C) ** B)
+
+    def five_pl(x, A, B, C, D, F):
+        return D + (A - D) / ((1 + (x / C) ** B) ** F)
+
+    def sigmoid_b(x, a, b, c):
+        return a / (1.0 + np.exp(-(x - b) / c))
+
+    def sigmoid_b_mod(x, a, b, c, d):
+        return a / (1.0 + np.exp(-(x - b) / c)) ** d
+
+    def logistic_a(x, a, b, c):
+        return a / (1.0 + b * np.exp(-c * x))
+
+    def logistic_b(x, a, b, c):
+        return a / (1.0 + (x / b) ** c)
+
+    def sigmoid_a(x, a, b):
+        return 1.0 / (1.0 + np.exp(-a * (x - b)))
+
+    def sigmoid_a_mod(x, a, b, c):
+        return 1.0 / (1.0 + np.exp(-a * (x - b))) ** c
+
+    def richards(x, a, b, c, d):
+        return 1.0 / (a + b * np.exp(c * x)) ** d
+
+    def janoschek(x, a, b, c):
+        return a - (1.0 - np.exp(-b * x ** c))
+
+    def janoschek_mod(x, a, w0, b, c):
+        return a - (a - w0) * (1.0 - np.exp(-b * x ** c))
+
+    def hill(x, a, b, c):
+        return a * x ** b / (c ** b + x ** b)
+
+    def gompertz_a(x, a, b, c):
+        return a * np.exp(-np.exp(b - c * x))
+
+    def gompertz_b(x, a, b, c):
+        return a * np.exp(-np.exp((x - b) / c))
+
+    def gompertz_c(x, a, b, c):
+        return a * np.exp(b * np.exp(c * x))
+
+    def generalised_logistic(x, A, C, T, B, M):
+        return A + C / ((1 + T * np.exp(-B * (x - M))) ** (1 / T))
+
+    def jacquelin(x, L, b, k, c, h):
+        return L / (1.0 + b * np.exp(-k * x) + c * np.exp(h * x))
+
+    def don_levin(x, a1, b1, c1, a2, b2, c2, a3, b3, c3):
+        return (
+            a1 / (1.0 + np.exp(-(x - b1) / c1)) +
+            a2 / (1.0 + np.exp(-(x - b2) / c2)) +
+            a3 / (1.0 + np.exp(-(x - b3) / c3))
+        )
+
+    def sigmoid_b(x, a, b, c):
+        return a / (1.0 + np.exp(-(x - b) / c))
+
+    def sigmoid_b_mod(x, a, b, c, d):
+        return a / (1.0 + np.exp(-(x - b) / c)) ** d
+
+    def logistic_a(x, a, b, c):
+        return a / (1.0 + b * np.exp(-c * x))
+
+    def logistic_b(x, a, b, c):
+        return a / (1.0 + (x / b) ** c)
 
     fit_label = None
     x_full = np.linspace(x_scaled.min(), x_scaled.max(), 1000).reshape(-1, 1)
@@ -89,6 +201,30 @@ if uploaded_file:
             y_full_pred = gompertz(scaler_x.inverse_transform(x_full).ravel(), *popt)
             fit_label = "Gompertz Fit"
         elif model_option == "4PL":
+            popt, _ = curve_fit(four_pl, x.ravel(), y.ravel(), maxfev=10000)
+            y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
+            y_full_pred = four_pl(scaler_x.inverse_transform(x_full).ravel(), *popt)
+            fit_label = "4PL Fit"
+        elif model_option == "Sigmoid B":
+            popt, _ = curve_fit(sigmoid_b, x.ravel(), y.ravel(), maxfev=10000)
+            y_pred = sigmoid_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
+            y_full_pred = sigmoid_b(scaler_x.inverse_transform(x_full).ravel(), *popt)
+            fit_label = "Sigmoid B Fit"
+        elif model_option == "Sigmoid B Modified":
+            popt, _ = curve_fit(sigmoid_b_mod, x.ravel(), y.ravel(), maxfev=10000)
+            y_pred = sigmoid_b_mod(scaler_x.inverse_transform(X_test).ravel(), *popt)
+            y_full_pred = sigmoid_b_mod(scaler_x.inverse_transform(x_full).ravel(), *popt)
+            fit_label = "Sigmoid B Mod Fit"
+        elif model_option == "Logistic A":
+            popt, _ = curve_fit(logistic_a, x.ravel(), y.ravel(), maxfev=10000)
+            y_pred = logistic_a(scaler_x.inverse_transform(X_test).ravel(), *popt)
+            y_full_pred = logistic_a(scaler_x.inverse_transform(x_full).ravel(), *popt)
+            fit_label = "Logistic A Fit"
+        elif model_option == "Logistic B":
+            popt, _ = curve_fit(logistic_b, x.ravel(), y.ravel(), maxfev=10000)
+            y_pred = logistic_b(scaler_x.inverse_transform(X_test).ravel(), *popt)
+            y_full_pred = logistic_b(scaler_x.inverse_transform(x_full).ravel(), *popt)
+            fit_label = "Logistic B Fit"
             popt, _ = curve_fit(four_pl, x.ravel(), y.ravel(), maxfev=10000)
             y_pred = four_pl(scaler_x.inverse_transform(X_test).ravel(), *popt)
             y_full_pred = four_pl(scaler_x.inverse_transform(x_full).ravel(), *popt)
