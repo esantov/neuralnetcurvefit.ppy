@@ -176,6 +176,38 @@ if uploaded_file:
                     worksheet = writer.book.add_worksheet(safe_name)
                     img_stream = io.BytesIO(img_bytes)
                     worksheet.insert_image("B2", f"{safe_name}.png", {"image_data": img_stream})
-
+    if st.button("📥 Export Full Report (Full Data + Fit Summary)"):
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            # Sheet: Original Data
+            df.to_excel(writer, sheet_name="Original Data", index=False)
+    
+            # Sheet: Fitting Parameters Summary
+            if 'fit_summary_table' in st.session_state:
+                st.session_state['fit_summary_table'].to_excel(writer, sheet_name="Fitting Summary", index=False)
+    
+            # Sheet: Y→X Predictions
+            if 'yx_predictions' in st.session_state:
+                st.session_state['yx_predictions'].to_excel(writer, sheet_name="Y→X Lookup", index=False)
+    
+            # Sheet: Fitted Curve Values
+            if 'fit_curve_data' in st.session_state:
+                st.session_state['fit_curve_data'].to_excel(writer, sheet_name="Fitted Curve", index=False)
+    
+            # Add plots (if desired)
+            workbook = writer.book
+            for idx, (plot_title, img_bytes) in enumerate(st.session_state.get("export_plots", [])):
+                worksheet_name = f"Plot_{idx+1}"[:31]
+                worksheet = workbook.add_worksheet(worksheet_name)
+                worksheet.insert_image('B2', f"{plot_title}.png", {'image_data': io.BytesIO(img_bytes)})
+    
         output.seek(0)
-        st.download_button("📥 Download Full Report", output, file_name="Final_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button(
+            label="Download Excel Report",
+            data=output,
+            file_name="curve_fit_report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    
+            output.seek(0)
+            st.download_button("📥 Download Full Report", output, file_name="Final_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
