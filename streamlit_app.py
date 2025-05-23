@@ -145,16 +145,27 @@ if uploaded_file:
     if st.button("📥 Export Report as Excel"):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            seen = set()
+            used_names = set()
+            def unique_name(base):
+                i = 1
+                name = base[:31]
+                while name in used_names:
+                    name = f"{base[:28]}_{i}"
+                    i += 1
+                used_names.add(name)
+                return name
+    
             for name, table in st.session_state["export_tables"]:
-                if name in export_selections and name not in seen:
-                    table.to_excel(writer, sheet_name=name[:31], index=False)
-                    seen.add(name)
+                if name in export_selections:
+                    safe_name = unique_name(name)
+                    table.to_excel(writer, sheet_name=safe_name, index=False)
+    
             for name, img_bytes in st.session_state["export_plots"]:
-                if name in export_selections and name not in seen:
-                    worksheet = writer.book.add_worksheet(name[:31])
+                if name in export_selections:
+                    safe_name = unique_name(name)
+                    worksheet = writer.book.add_worksheet(safe_name)
                     img_stream = io.BytesIO(img_bytes)
-                    worksheet.insert_image("B2", f"{name}.png", {"image_data": img_stream})
-                    seen.add(name)
+                    worksheet.insert_image("B2", f"{safe_name}.png", {"image_data": img_stream})
+
         output.seek(0)
         st.download_button("📥 Download Full Report", output, file_name="Final_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
