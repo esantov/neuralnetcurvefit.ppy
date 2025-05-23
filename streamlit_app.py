@@ -149,11 +149,11 @@ if uploaded_file:
         st.session_state["export_tables"].append(("Tt Summary", tt_df.copy()))
         st.success("Tt data added to report")
 
-st.subheader("Select elements to include in report")
-for i, (key, included) in enumerate(st.session_state['report_elements'].items(), start=1):
-    label_type = "Plot" if "Plot" in key else "Table"
-    label = f"{label_type} {i}"
-    st.session_state['report_elements'][key] = st.checkbox(label, value=included)
+    st.subheader("Select elements to include in report")
+    for i, (key, included) in enumerate(st.session_state['report_elements'].items(), start=1):
+        label_type = "Plot" if "Plot" in key else "Table"
+        label = f"{label_type} {i}"
+        st.session_state['report_elements'][key] = st.checkbox(label, value=included)
 
     if st.button("📥 Export Report as Excel"):
         output = io.BytesIO()
