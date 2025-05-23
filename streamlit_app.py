@@ -74,7 +74,7 @@ if not np.issubdtype(x_data.dtype, np.number) or not np.issubdtype(y_data.dtype,
                 y = scaler_y.inverse_transform(y_train)
                 if model == "Exponential":
                     try:
-                popt, _ = curve_fit(exponential, x.ravel(), y.ravel(), maxfev=10000)
+                        popt, _ = curve_fit(exponential, x.ravel(), y.ravel(), maxfev=10000)
             except RuntimeError:
                 st.warning(f"⚠️ {model_option} model failed to converge. Try a different model.")
                 popt = [0] * 4
