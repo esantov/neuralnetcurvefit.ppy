@@ -160,36 +160,52 @@ if uploaded_file:
     if st.button("➕ Add Tt Table to Report"):
         st.session_state["export_tables"].append((f"Tt_Table_{len(st.session_state['export_tables'])+1}", tt_df.copy()))
 
-    # Report selection checkboxes
+    # — Report selection checkboxes —
     st.subheader("Select report contents")
-    for name,_ in st.session_state["export_tables"]:
-        st.session_state["report_elements"][name] = st.checkbox(name, value=True)
-    for name,_ in st.session_state["export_plots"]:
-        st.session_state["report_elements"][name] = st.checkbox(name, value=True)
+    # Tables
+    for name, _ in st.session_state.get("export_tables", []):
+        st.session_state["report_elements"][name] = st.checkbox(name, value=st.session_state["report_elements"].get(name, True))
+    # Plots
+    for name, _ in st.session_state.get("export_plots", []):
+        st.session_state["report_elements"][name] = st.checkbox(name, value=st.session_state["report_elements"].get(name, True))
 
-    # Export final report
+    # — Export final report —
     if st.button("📥 Export Report as Excel"):
         out = io.BytesIO()
         with pd.ExcelWriter(out, engine="xlsxwriter") as writer:
             used = set()
-             # Tables
+
+            # Tables
             for name, tbl in st.session_state.get("export_tables", []):
                 if st.session_state["report_elements"].get(name):
                     sheet = name[:31]
-                    i=1
+                    i = 1
                     while sheet in used:
-                        sheet = f"{name[:28]}_{i}"; i+=1
+                        sheet = f"{name[:28]}_{i}"
+                        i += 1
                     tbl.to_excel(writer, sheet_name=sheet, index=False)
                     used.add(sheet)
+
             # Plots
-            for name, img in st.session_state["export_plots"]:
+            for name, img in st.session_state.get("export_plots", []):
                 if st.session_state["report_elements"].get(name):
-                    sheet = name[:31]; i=1
+                    sheet = name[:31]
+                    i = 1
                     while sheet in used:
-                        sheet = f"{name[:28]}_{i}"; i+=1
+                        sheet = f"{name[:28]}_{i}"
+                        i += 1
                     ws = writer.book.add_worksheet(sheet)
-                    ws.insert_image("B2", f"{sheet}.png", {"image_data":io.BytesIO(img)})
+                    ws.insert_image("B2", f"{sheet}.png", {"image_data": io.BytesIO(img)})
                     used.add(sheet)
+
+        out.seek(0)
+        st.download_button(
+            "📥 Download Excel Report",
+            data=out,
+            file_name="curve_fit_report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
         out.seek(0)
         st.download_button(
             "📥 Download Excel Report",
