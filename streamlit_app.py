@@ -40,9 +40,18 @@ if uploaded_file:
     threshold_value = st.number_input("Enter Y-axis threshold", value=float(df[y_col].mean()))
 
     df = df[df[sample_col].isin(selected_samples)]
+   
+    transform_option = st.selectbox("Select data transformation", [
+        "None", 
+        "Log", 
+        "Z-score", 
+        "Min-Max", 
+        "Baseline subtraction"
+    ])
 
+    
     x_data = df[x_col].values.reshape(-1, 1)
-    y_data = df[y_col].values.reshape(-1, 1)
+    y_data_transformed = apply_transformation(y_data.ravel()).reshape(-1, 1)
 
     scaler_x = MinMaxScaler()
     scaler_y = MinMaxScaler()
@@ -50,6 +59,7 @@ if uploaded_file:
     y_scaled = scaler_y.fit_transform(y_data)
 
     X_train, X_test, y_train, y_test = train_test_split(x_scaled, y_scaled, test_size=0.2, random_state=42)
+
 
     # ===== Define models =====
     def linear(x, a, b): return a * x + b
@@ -80,6 +90,18 @@ if uploaded_file:
     hidden_layers = st.slider("Hidden layers (for NN)", 5, 200, 50)
 
     # ===== Fitting =====
+    def apply_transformation(y):
+    if transform_option == "Log":
+        return np.log1p(y)
+    elif transform_option == "Z-score":
+        return (y - np.mean(y)) / np.std(y) if np.std(y) != 0 else y
+    elif transform_option == "Min-Max":
+        return (y - np.min(y)) / (np.max(y) - np.min(y)) if np.max(y) != np.min(y) else y
+    elif transform_option == "Baseline subtraction":
+        return y - y[0]
+    else:  # None
+        return y
+   
     x_full = np.linspace(x_scaled.min(), x_scaled.max(), 500).reshape(-1, 1)
     x_full_inv = scaler_x.inverse_transform(x_full)
     fig, ax = plt.subplots()
@@ -179,6 +201,7 @@ if uploaded_file:
                     worksheet = writer.book.add_worksheet(safe_name)
                     img_stream = io.BytesIO(img_bytes)
                     worksheet.insert_image("B2", f"{safe_name}.png", {"image_data": img_stream})
+   
     if st.button("📥 Export Full Report (Full Data + Fit Summary)"):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
