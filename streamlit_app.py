@@ -8,6 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.neural_network import MLPRegressor
 from sklearn.metrics import r2_score
 from scipy.optimize import curve_fit, root_scalar
+from sklearn.metrics import mean_squared_error
 
 st.set_page_config(layout="centered")
 st.title("Neural Network + Parametric Curve Fitting")
@@ -91,6 +92,8 @@ if uploaded_file:
         return "N/A","N/A"
 
     # Prepare plotting
+    popt_list, pcov_list, y_fit_list = [], [], []
+    r2_list, rmse_list, sample_list = [], [], []
     x_full = np.linspace(x_scaled.min(), x_scaled.max(), 500).reshape(-1,1)
     x_full_inv = scaler_x.inverse_transform(x_full)
     fig, ax = plt.subplots()
@@ -120,6 +123,25 @@ if uploaded_file:
                 fit_label=f"{model_choice} Fit"
             except:
                 tt_rows.append({"Sample":samp, "Tt":"N/A", "StdErr":"N/A"})
+           
+            # compute goodness‐of‐fit on your test split:
+            y_test_pred = funcs[model_choice](
+                scaler_x.inverse_transform(X_test).ravel(), 
+                *popt
+            )
+            y_test_inv  = scaler_y.inverse_transform(y_test).ravel()
+            y_pred_inv  = scaler_y.inverse_transform(y_test_pred.reshape(-1,1)).ravel()
+            r2  = r2_score(y_test_inv, y_pred_inv)
+            rmse = np.sqrt(mean_squared_error(y_test_inv, y_pred_inv))
+            
+            # store for summary/export
+            popt_list.append(popt)
+            pcov_list.append(pcov)
+            y_fit_list.append(y_fit)                # array of fitted Y at x_full_inv
+            r2_list.append(r2)
+            rmse_list.append(rmse)
+            sample_list.append(samp)
+
 
     ax.axhline(threshold, linestyle='--', color='red', label='Threshold')
     ax.set_xlabel(x_col); ax.set_ylabel(y_col)
