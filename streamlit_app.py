@@ -150,7 +150,8 @@ if uploaded_file:
         out = io.BytesIO()
         with pd.ExcelWriter(out, engine="xlsxwriter") as writer:
             used = set()
-            for name, tbl in st.session_state["export_tables"]:
+             # Tables
+            for name, tbl in st.session_state.get("export_tables", []):
                 if st.session_state["report_elements"].get(name):
                     sheet = name[:31]
                     i=1
@@ -158,6 +159,7 @@ if uploaded_file:
                         sheet = f"{name[:28]}_{i}"; i+=1
                     tbl.to_excel(writer, sheet_name=sheet, index=False)
                     used.add(sheet)
+            # Plots
             for name, img in st.session_state["export_plots"]:
                 if st.session_state["report_elements"].get(name):
                     sheet = name[:31]; i=1
