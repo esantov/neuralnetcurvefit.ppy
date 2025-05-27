@@ -21,6 +21,52 @@ if "export_plots" not in st.session_state:
 if "report_elements" not in st.session_state:
     st.session_state["report_elements"] = {}
 
+# ================= Sidebar Inputs =================
+with st.sidebar:
+    st.header("Data & Model Configuration")
+
+    # File upload stays in main or can be in sidebar too—your choice
+    uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx", "xls"])
+
+    if uploaded_file:
+        xls = pd.ExcelFile(uploaded_file)
+        sheet_name = st.selectbox("Select sheet", xls.sheet_names, key="sheet")
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+
+        sample_col = st.selectbox("Sample column", df.columns, key="sample_col")
+        x_col = st.selectbox("X column", df.select_dtypes("number").columns, key="x_col")
+        y_col = st.selectbox("Y column", df.select_dtypes("number").columns, key="y_col")
+
+        samples = df[sample_col].dropna().unique().tolist()
+        selected_samples = st.multiselect("Select samples", samples, default=samples, key="sel_samps")
+        treat_as_replicates = st.checkbox("Treat as replicates", value=False, key="replicate")
+
+        threshold = st.number_input("Y Threshold", 
+                                    value=float(df[y_col].mean()), 
+                                    step=0.1, key="threshold")
+
+        st.markdown("---")
+        st.subheader("Data Transformation")
+        transform_option = st.selectbox("Transform Y data", [
+            "None", "Log Transform", "Z-Score Normalization",
+            "Min-Max Scaling", "Baseline subtraction"
+        ], key="transform")
+
+        st.markdown("---")
+        st.subheader("Model Selection")
+        hidden_layers = st.slider("Hidden layer size", 5, 200, 50, key="hid_layers")
+        model_choice = st.radio("Choose model", [
+            "Neural Network", "Exponential", "Gompertz", "4PL", "5PL", "Linear"
+        ], key="model_choice")
+
+# ================ Main Panel ================
+st.title("Neural Network + Parametric Curve Fitting")
+
+if uploaded_file:
+    st.dataframe(df.head())
+    # ... rest of your fitting & plotting logic stays the same ...
+
+
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx", "xls"])
 if uploaded_file:
     # Load data
