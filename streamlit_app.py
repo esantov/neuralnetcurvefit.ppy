@@ -9,27 +9,26 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.metrics import r2_score
 from scipy.optimize import curve_fit, root_scalar
 
-st.set_page_config(
-    layout="centered", 
-    page_title="Neural Network Curve Fitting",
-    page_icon="📈"
-)
+st.set_page_config(layout="centered")
+st.title("Neural Network + Parametric Curve Fitting")
 
-
-# ========== Initialize state ==========
+# Initialize report storage
 if "export_tables" not in st.session_state:
     st.session_state["export_tables"] = []
 if "export_plots" not in st.session_state:
     st.session_state["export_plots"] = []
+if "report_elements" not in st.session_state:
+    st.session_state["report_elements"] = {}
 
-# ========== Upload ==========
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx", "xls"])
 if uploaded_file:
+    # Load data
     xls = pd.ExcelFile(uploaded_file)
     sheet_name = st.selectbox("Select sheet", xls.sheet_names)
     df = pd.read_excel(xls, sheet_name=sheet_name)
     st.dataframe(df.head())
 
+    # Column selection
     sample_col = st.selectbox("Sample column", df.columns)
     x_col = st.selectbox("X column", df.select_dtypes("number").columns)
     y_col = st.selectbox("Y column", df.select_dtypes("number").columns)
@@ -37,203 +36,140 @@ if uploaded_file:
     samples = df[sample_col].dropna().unique().tolist()
     selected_samples = st.multiselect("Select samples", samples, default=samples)
     treat_as_replicates = st.checkbox("Treat as replicates", value=False)
-    threshold_value = st.number_input("Enter Y-axis threshold", value=float(df[y_col].mean()))
+    threshold = st.number_input("Y Threshold", value=float(df[y_col].mean()), step=0.1)
 
     df = df[df[sample_col].isin(selected_samples)]
-   
-    transform_option = st.selectbox("Select data transformation", [
-        "None", 
-        "Log", 
-        "Z-score", 
-        "Min-Max", 
-        "Baseline subtraction"
+
+    # Transformation
+    st.sidebar.subheader("Data Transformation")
+    transform_option = st.sidebar.selectbox("Transform Y data", [
+        "None", "Log Transform", "Z-Score Normalization",
+        "Min-Max Scaling", "Baseline subtraction"
     ])
 
-    
     x_data = df[x_col].values.reshape(-1, 1)
-    y_data_transformed = apply_transformation(y_data.ravel()).reshape(-1, 1)
+    y_data = df[y_col].values.reshape(-1, 1)
+    if transform_option == "Log Transform":
+        y_data = np.log1p(y_data)
+    elif transform_option == "Z-Score Normalization":
+        y_data = (y_data - np.mean(y_data)) / np.std(y_data)
+    elif transform_option == "Min-Max Scaling":
+        y_data = (y_data - np.min(y_data)) / (np.max(y_data) - np.min(y_data))
+    elif transform_option == "Baseline subtraction":
+        y_data = y_data - y_data[0]
 
-    scaler_x = MinMaxScaler()
-    scaler_y = MinMaxScaler()
+    # Scale
+    scaler_x, scaler_y = MinMaxScaler(), MinMaxScaler()
     x_scaled = scaler_x.fit_transform(x_data)
     y_scaled = scaler_y.fit_transform(y_data)
+    X_train, X_test, y_train, y_test = train_test_split(
+        x_scaled, y_scaled, test_size=0.2, random_state=42
+    )
 
-    X_train, X_test, y_train, y_test = train_test_split(x_scaled, y_scaled, test_size=0.2, random_state=42)
+    hidden_layers = st.slider("Hidden layer size", 5, 200, 50)
+    model_choice = st.radio("Choose model", [
+        "Neural Network", "Exponential", "Gompertz", "4PL", "5PL", "Linear"
+    ])
 
+    # Model functions
+    def linear(x,a,b): return a*x + b
+    def exponential(x,a,b): return a*np.exp(b*x)
+    def gompertz(x,a,b,c): return a*np.exp(-b*np.exp(-c*x))
+    def four_pl(x,A,B,C,D): return D + (A-D)/(1 + (x/C)**B)
+    def five_pl(x,A,B,C,D,F): return D + (A-D)/((1 + (x/C)**B)**F)
 
-    # ===== Define models =====
-    def linear(x, a, b): return a * x + b
-    def exponential(x, a, b): return a * np.exp(b * x)
-    def gompertz(x, a, b, c): return a * np.exp(-b * np.exp(-c * x))
-    def four_pl(x, A, B, C, D): return D + (A - D) / (1 + (x / C) ** B)
-    def five_pl(x, A, B, C, D, F): return D + (A - D) / ((1 + (x / C) ** B) ** F)
-
-    def calculate_tt_and_stderr(fit_func, popt, pcov, threshold_y, x_bounds):
-        def root_fn(x): return fit_func(x, *popt) - threshold_y
-        result = root_scalar(root_fn, bracket=x_bounds)
-        if result.converged:
-            tt = result.root
+    def calculate_tt_and_stderr(fit_func, popt, pcov, thr, bounds):
+        res = root_scalar(lambda x: fit_func(x,*popt) - thr, bracket=bounds)
+        if res.converged:
+            tt = res.root
             grad = np.zeros_like(popt)
             for i in range(len(popt)):
-                dp = np.zeros_like(popt)
-                dp[i] = 1e-5
-                grad[i] = (fit_func(tt, *(popt + dp)) - fit_func(tt, *(popt - dp))) / (2e-5)
-            tt_var = grad.T @ pcov @ grad
-            tt_stderr = np.sqrt(tt_var) if tt_var > 0 else np.nan
-            return round(tt, 4), round(tt_stderr, 4)
-        else:
-            return "N/A", "N/A"
+                dp = np.zeros_like(popt); dp[i]=1e-5
+                grad[i] = (fit_func(tt,*(popt+dp)) - fit_func(tt,*(popt-dp))) / (2e-5)
+            var = grad.T @ pcov @ grad
+            return round(tt,4), round(np.sqrt(var),4) if var>0 else (round(tt,4),"N/A")
+        return "N/A","N/A"
 
-    # ===== Model selection =====
-    model_options = ["Neural Network", "Exponential", "Gompertz", "4PL", "5PL", "Linear"]
-    model_choice = st.radio("Choose model", model_options)
-    hidden_layers = st.slider("Hidden layers (for NN)", 5, 200, 50)
-
-    # ===== Fitting =====
-    def apply_transformation(y):
-    if transform_option == "Log":
-        return np.log1p(y)
-    elif transform_option == "Z-score":
-        return (y - np.mean(y)) / np.std(y) if np.std(y) != 0 else y
-    elif transform_option == "Min-Max":
-        return (y - np.min(y)) / (np.max(y) - np.min(y)) if np.max(y) != np.min(y) else y
-    elif transform_option == "Baseline subtraction":
-        return y - y[0]
-    else:  # None
-        return y
-   
-    x_full = np.linspace(x_scaled.min(), x_scaled.max(), 500).reshape(-1, 1)
+    # Prepare plotting
+    x_full = np.linspace(x_scaled.min(), x_scaled.max(), 500).reshape(-1,1)
     x_full_inv = scaler_x.inverse_transform(x_full)
     fig, ax = plt.subplots()
     tt_rows = []
 
-    if model_choice == "Neural Network" and treat_as_replicates:
-        nn = MLPRegressor((hidden_layers,), max_iter=10000, early_stopping=True)
+    if model_choice=="Neural Network" and treat_as_replicates:
+        nn = MLPRegressor((hidden_layers,), max_iter=10000, early_stopping=True, random_state=42)
         nn.fit(X_train, y_train.ravel())
-        y_pred_full = nn.predict(x_full)
-        y_full = scaler_y.inverse_transform(y_pred_full.reshape(-1, 1))
-        ax.plot(x_full_inv, y_full, '-', label="Neural Network Fit")
-        fit_func = lambda x: scaler_y.inverse_transform(nn.predict(scaler_x.transform(np.array(x).reshape(-1, 1))).reshape(-1, 1)).ravel()[0]
-        try:
-            def root_fn(x): return fit_func([x]) - threshold_value
-            result = root_scalar(root_fn, bracket=[x_data.min(), x_data.max()])
-            if result.converged:
-                tt = round(result.root, 4)
-                tt_rows.append({"Sample": "Replicates", "Tt": tt, "StdErr": "N/A"})
-        except:
-            tt_rows.append({"Sample": "Replicates", "Tt": "N/A", "StdErr": "N/A"})
-
+        y_fit_full = scaler_y.inverse_transform(nn.predict(x_full).reshape(-1,1))
+        ax.plot(x_full_inv, y_fit_full, '-', label="NN Fit")
+        fit_label="NN Fit"
     else:
-        model_funcs = {
-            "Linear": linear, "Exponential": exponential, "Gompertz": gompertz,
-            "4PL": four_pl, "5PL": five_pl
+        funcs = {
+            "Linear": linear, "Exponential": exponential,
+            "Gompertz": gompertz, "4PL": four_pl, "5PL": five_pl
         }
-        for sample in selected_samples:
-            sub = df[df[sample_col] == sample]
-            x_vals = sub[x_col].values
-            y_vals = sub[y_col].values
-            ax.plot(x_vals, y_vals, 'o', label=f"{sample} data")
-
+        for samp in selected_samples:
+            sub = df[df[sample_col]==samp]
+            x_vals,y_vals = sub[x_col].values, sub[y_col].values
+            ax.plot(x_vals, y_vals, 'o', label=samp)
             try:
-                popt, pcov = curve_fit(model_funcs[model_choice], x_vals, y_vals, maxfev=10000)
-                y_fit = model_funcs[model_choice](x_full_inv.ravel(), *popt)
-                ax.plot(x_full_inv, y_fit, '-', label=f"{sample} fit")
-                tt, stderr = calculate_tt_and_stderr(model_funcs[model_choice], popt, pcov, threshold_value, [x_vals.min(), x_vals.max()])
-                tt_rows.append({"Sample": sample, "Tt": tt, "StdErr": stderr})
+                popt,pcov = curve_fit(funcs[model_choice], x_vals, y_vals, maxfev=10000)
+                y_fit = funcs[model_choice](x_full_inv.ravel(), *popt)
+                ax.plot(x_full_inv, y_fit, '-', label=f"{samp} fit")
+                tt, se = calculate_tt_and_stderr(funcs[model_choice], popt, pcov, threshold, [x_vals.min(), x_vals.max()])
+                tt_rows.append({"Sample":samp, "Tt":tt, "StdErr":se})
+                fit_label=f"{model_choice} Fit"
             except:
-                tt_rows.append({"Sample": sample, "Tt": "N/A", "StdErr": "N/A"})
+                tt_rows.append({"Sample":samp, "Tt":"N/A", "StdErr":"N/A"})
 
-    ax.axhline(threshold_value, color='red', linestyle='--', label='Threshold')
-    ax.set_title(f"Fitting: {model_choice}")
-    ax.set_xlabel(x_col)
-    ax.set_ylabel(y_col)
-    ax.legend(
-        bbox_to_anchor=(1.05, 1),
-        loc='upper left',
-        borderaxespad=0.,
-        fontsize='small'
-    )
-
+    ax.axhline(threshold, linestyle='--', color='red', label='Threshold')
+    ax.set_xlabel(x_col); ax.set_ylabel(y_col)
+    ax.set_title(fit_label)
+    ax.legend(bbox_to_anchor=(1.05,1), loc='upper left', fontsize='small')
     st.pyplot(fig)
 
-    # ===== Add to report buttons =====
-    if st.button("📊 Add Plot to Report"):
-        buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=300)
-        st.session_state["export_plots"].append(("Fitting Plot", buf.getvalue()))
-        st.success("Plot added to report")
+    # Add-to-report buttons
+    if st.button("➕ Add Plot to Report"):
+        buf = io.BytesIO(); fig.savefig(buf,format="png",dpi=300,bbox_inches='tight')
+        st.session_state["export_plots"].append((f"Plot_{len(st.session_state['export_plots'])+1}", buf.getvalue()))
 
     tt_df = pd.DataFrame(tt_rows)
-    st.write("### Tt (Threshold Time) Summary")
+    st.subheader("Threshold Time Results")
     st.dataframe(tt_df)
+    if st.button("➕ Add Tt Table to Report"):
+        st.session_state["export_tables"].append((f"Tt_Table_{len(st.session_state['export_tables'])+1}", tt_df.copy()))
 
-    if st.button("📑 Add Tt Table to Report"):
-        st.session_state["export_tables"].append(("Tt Summary", tt_df.copy()))
-        st.success("Tt data added to report")
+    # Report selection checkboxes
+    st.subheader("Select report contents")
+    for name,_ in st.session_state["export_tables"]:
+        st.session_state["report_elements"][name] = st.checkbox(name, value=True)
+    for name,_ in st.session_state["export_plots"]:
+        st.session_state["report_elements"][name] = st.checkbox(name, value=True)
 
-    st.subheader("Select elements to include in report")
-    for i, (key, included) in enumerate(st.session_state['report_elements'].items(), start=1):
-        label_type = "Plot" if "Plot" in key else "Table"
-        label = f"{label_type} {i}"
-        st.session_state['report_elements'][key] = st.checkbox(label, value=included)
-
+    # Export final report
     if st.button("📥 Export Report as Excel"):
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            used_names = set()
-            def unique_name(base):
-                i = 1
-                name = base[:31]
-                while name in used_names:
-                    name = f"{base[:28]}_{i}"
-                    i += 1
-                used_names.add(name)
-                return name
-    
-            for name, table in st.session_state["export_tables"]:
-                if name in export_selections:
-                    safe_name = unique_name(name)
-                    table.to_excel(writer, sheet_name=safe_name, index=False)
-    
-            for name, img_bytes in st.session_state["export_plots"]:
-                if name in export_selections:
-                    safe_name = unique_name(name)
-                    worksheet = writer.book.add_worksheet(safe_name)
-                    img_stream = io.BytesIO(img_bytes)
-                    worksheet.insert_image("B2", f"{safe_name}.png", {"image_data": img_stream})
-   
-    if st.button("📥 Export Full Report (Full Data + Fit Summary)"):
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            # Sheet: Original Data
-            df.to_excel(writer, sheet_name="Original Data", index=False)
-    
-            # Sheet: Fitting Parameters Summary
-            if 'fit_summary_table' in st.session_state:
-                st.session_state['fit_summary_table'].to_excel(writer, sheet_name="Fitting Summary", index=False)
-    
-            # Sheet: Y→X Predictions
-            if 'yx_predictions' in st.session_state:
-                st.session_state['yx_predictions'].to_excel(writer, sheet_name="Y→X Lookup", index=False)
-    
-            # Sheet: Fitted Curve Values
-            if 'fit_curve_data' in st.session_state:
-                st.session_state['fit_curve_data'].to_excel(writer, sheet_name="Fitted Curve", index=False)
-    
-            # Add plots (if desired)
-            workbook = writer.book
-            for idx, (plot_title, img_bytes) in enumerate(st.session_state.get("export_plots", [])):
-                worksheet_name = f"Plot_{idx+1}"[:31]
-                worksheet = workbook.add_worksheet(worksheet_name)
-                worksheet.insert_image('B2', f"{plot_title}.png", {'image_data': io.BytesIO(img_bytes)})
-             
-        output.seek(0)
-        st.download_button("📥 Download Full Report", output, file_name="Final_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        out = io.BytesIO()
+        with pd.ExcelWriter(out, engine="xlsxwriter") as writer:
+            used = set()
+            for name, tbl in st.session_state["export_tables"]:
+                if st.session_state["report_elements"].get(name):
+                    sheet = name[:31]
+                    i=1
+                    while sheet in used:
+                        sheet = f"{name[:28]}_{i}"; i+=1
+                    tbl.to_excel(writer, sheet_name=sheet, index=False)
+                    used.add(sheet)
+            for name, img in st.session_state["export_plots"]:
+                if st.session_state["report_elements"].get(name):
+                    sheet = name[:31]; i=1
+                    while sheet in used:
+                        sheet = f"{name[:28]}_{i}"; i+=1
+                    ws = writer.book.add_worksheet(sheet)
+                    ws.insert_image("B2", f"{sheet}.png", {"image_data":io.BytesIO(img)})
+                    used.add(sheet)
+        out.seek(0)
         st.download_button(
-            label="📥 Download Full Curve Fit Report",
-            data=output,
+            "📥 Download Excel Report",
+            data=out,
             file_name="curve_fit_report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-        
-       
