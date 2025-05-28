@@ -174,6 +174,14 @@ def main():
     transforms = st.sidebar.multiselect("Transform sequence", transform_opts, default=["None"])
     threshold = st.sidebar.number_input("Threshold", value=1.0)
 
+    # -----------------------------
+    # Global Model Override
+    # -----------------------------
+    st.sidebar.markdown("### Global Model Fit")
+    global_model = st.sidebar.selectbox("Fit all samples with", list(MODELS.keys()))
+    fit_all = st.sidebar.checkbox("Use global model for all samples", value=False)
+
+
     # Interactive plot
     sel_pts = plot_interactive(df, df_orig, x_col, y_col, sample_col, transforms, threshold)
     if sel_pts and st.button("Remove Selected Points"):
@@ -203,6 +211,12 @@ def main():
     remove_t0 = "Remove T0" in transforms
     real_transforms = [t for t in transforms if t!="Remove T0"]
     for sample in df[sample_col].unique():
+        # choose model per-sample or global override
+        if fit_all:
+            model = global_model
+        else:
+            model = st.sidebar.selectbox(f"Model for {sample}", list(MODELS.keys()))
+
         grp = df[df[sample_col]==sample].sort_values(x_col)
         if remove_t0 and len(grp)>1:
             grp = grp.iloc[1:]
